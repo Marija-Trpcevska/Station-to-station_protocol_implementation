@@ -8,10 +8,11 @@ import java.util.ArrayList;
 public class User {
     KeyPair RSAkeyPair;
     BigInteger DHKey;
-    int exponent;
+    BigInteger exponent; //int exponent
     BigInteger generator;
     BigInteger cyclic_group_p;
     BigInteger g_pow_a;
+    //generator.pow(this.exponent) with generator.modPow(this.exponent, this.cyclic_group_p)
 
     public ArrayList<BigInteger> initiate_protocol(){
         BigInteger generator = new BigInteger("5");
@@ -22,10 +23,10 @@ public class User {
         this.cyclic_group_p = cyclic_group_p;
         System.out.println("CYCLIC_GROUP: "+cyclic_group_p);
 
-        this.exponent = (int)(Math.random()*(100-10)+10);
+        this.exponent = new BigInteger(String.valueOf((int)(Math.random()*(100-10)+10))); //Math.random()*(100-10)+10
         System.out.println("ALICE EXPONENT A: "+this.exponent);
 
-        BigInteger g_pow_a = generator.pow(this.exponent);
+        BigInteger g_pow_a = generator.modPow(this.exponent, cyclic_group_p);
         System.out.println("ALICE G^A: "+g_pow_a);
 
         ArrayList<BigInteger> request = new ArrayList<>();
@@ -43,14 +44,14 @@ public class User {
         BigInteger g_pow_a = request.get(2);
         this.g_pow_a = g_pow_a;
 
-        this.exponent =  (int)(Math.random()*(100-10)+10);
+        this.exponent =  new BigInteger(String.valueOf((int)(Math.random()*(100-10)+10)));
         System.out.println("BOB EXPONENT B: "+exponent);
-        BigInteger g_pow_b = generator.pow(this.exponent);
+        BigInteger g_pow_b = generator.modPow(this.exponent, this.cyclic_group_p);
         System.out.println("BOB G^B: "+g_pow_b);
-        BigInteger K = g_pow_a.pow(this.exponent);
+        BigInteger K = g_pow_a.modPow(this.exponent, this.cyclic_group_p);
         System.out.println("SHARED SECRET KEY: "+K);
         this.DHKey = K;
-
+        System.out.println("SHARED SECRET KEY (Alice): "+this.DHKey);
         Signature signature = Signature.getInstance("SHA512/256withRSA");
         signature.initSign(this.RSAkeyPair.getPrivate(),new SecureRandom());
         ByteBuffer byteBuffer = ByteBuffer.allocate(g_pow_b.toByteArray().length+g_pow_a.toByteArray().length);
@@ -80,10 +81,11 @@ public class User {
         if(CertificateAuthority.verifyCertificate(stsCertificate_received)){
             System.out.println("VERIFIED CERTIFICATE SUCCESSFULLY FOR "+stsCertificate_received.ID);
             BigInteger g_pow_b_received = (BigInteger)response[0];
-            BigInteger K = g_pow_b_received.pow(this.exponent);
+            BigInteger K = g_pow_b_received.modPow(this.exponent, this.cyclic_group_p);
             this.DHKey = K;
+            System.out.println("SHARED SECRET KEY (Bob): "+this.DHKey);
             byte[] decrypted_data = AES.decrypt((byte[])response[2], K.toString());
-            BigInteger g_pow_a = this.generator.pow(this.exponent);
+            BigInteger g_pow_a = this.generator.modPow(this.exponent, this.cyclic_group_p);
             Signature signature = Signature.getInstance("SHA512/256withRSA");
             signature.initVerify(stsCertificate_received.publicKey);
             ByteBuffer byteBuffer = ByteBuffer.allocate(g_pow_b_received.toByteArray().length+g_pow_a.toByteArray().length);
@@ -123,7 +125,7 @@ public class User {
         if(CertificateAuthority.verifyCertificate(stsCertificate_received)){
             System.out.println("VERIFIED CERTIFICATE SUCCESSFULLY FOR "+stsCertificate_received.ID);
             byte[] decrypted_data = AES.decrypt((byte[])response[1],this.DHKey.toString());
-            BigInteger g_pow_b = this.generator.pow(this.exponent);
+            BigInteger g_pow_b = this.generator.modPow(this.exponent, this.cyclic_group_p);
             Signature signature = Signature.getInstance("SHA512/256withRSA");
             signature.initVerify(stsCertificate_received.publicKey);
             ByteBuffer byteBuffer_self = ByteBuffer.allocate(this.g_pow_a.toByteArray().length+g_pow_b.toByteArray().length);
